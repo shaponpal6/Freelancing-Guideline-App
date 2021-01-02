@@ -1,79 +1,113 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-  SafeAreaView,
+  ActivityIndicator,
   StyleSheet,
   ScrollView,
   View,
   Text,
-  StatusBar,
 } from 'react-native';
 
-import {
-  Header,
-  LearnMoreLinks,
-  Colors,
-  DebugInstructions,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import Content, {
+  Title,
+  Photo,
+  H1,
+  H2,
+  H4,
+  List,
+  Loading,
+} from '../components/Content';
+import Footer from '../components/Footer';
 
-import menus from '../../src/store/category';
-import MenuItem from '../components/MenuItem';
-import Navigator from './Navigator';
+export default function PageScreen({content}) {
+  const [state, setState] = useState({loading: true});
+  const [isMounted, setIsMounted] = useState(true);
 
-export default class PageScreen extends React.Component {
-  render() {
-    return (
-      <>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.scrollView}>
-          <Header>Header</Header>
-          <View style={styles.body}>
-            <Text>content page</Text>
-            {/* <LearnMoreLinks /> */}
-          </View>
-        </ScrollView>
-      </>
-    );
+  useEffect(() => {
+    const cat = content.cat ?? '';
+    const id = content.id ?? '';
+    getListFromApiAsync(cat, id);
+    return () => setIsMounted(false);
+  }, []);
+
+  const getListFromApiAsync = (cat, id) =>
+    fetch(
+      'https://raw.githubusercontent.com/shaponpal6/freelancing-guideline-api/main/data/' +
+        cat +
+        '/' +
+        id +
+        '.json',
+    )
+      .then((response) => {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.indexOf('application/json') !== -1) {
+          return response.json();
+        } else {
+          return response.text();
+        }
+      })
+      .then((responseJson) => {
+        let data = {};
+        try {
+          data = JSON.parse(responseJson);
+        } catch (err) {
+          data['error'] = JSON.stringify(err);
+        }
+        if (isMounted) setState({result: data, loading: false});
+      })
+      .catch((error) => {
+        if (isMounted) setState({result: [], loading: false});
+      });
+
+  if (state.loading) {
+    return <Loading />;
   }
+
+  const randerContent = (content) => {
+    if (content && content.length) {
+      return content.map((item, index) => {
+        if (item.type === 'title')
+          return <Title key={'fg-' + index} text={item.text} />;
+        if (item.type === 'content')
+          return <Content key={'fg-' + index} text={item.text} />;
+        if (item.type === 'h1')
+          return <H1 key={'fg-' + index} text={item.text} />;
+        if (item.type === 'h2')
+          return <H2 key={'fg-' + index} text={item.text} />;
+        if (item.type === 'h4')
+          return <H4 key={'fg-' + index} text={item.text} />;
+        if (item.type === 'image')
+          return <Photo key={'fg-' + index} url={item.text} />;
+        if (item.type === 'list')
+          return <List key={'fg-' + index} text={item.text} />;
+        if (item.type === 'one')
+          return <Content key={'fg-' + index} text={item.text} />;
+      });
+    }
+  };
+
+  return (
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        style={styles.scrollView}>
+        <ActivityIndicator />
+        <View style={styles.body}>
+          {state.result && state.result.content ? (
+            randerContent(state.result.content)
+          ) : (
+            <Text>No Content</Text>
+          )}
+        </View>
+        <Footer></Footer>
+      </ScrollView>
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
-  },
-  engine: {
-    position: 'absolute',
-    right: 0,
-  },
+  scrollView: {},
   body: {
-    backgroundColor: Colors.white,
-    margin: 10,
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
+    marginBottom: 40,
+    paddingHorizontal: 10,
   },
 });
